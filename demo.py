@@ -75,7 +75,7 @@ def image_stream(imagedir, depthdir, calib, stride, return_depth = True):
             yield t, image[None], intrinsics
 
 
-def save_reconstruction(droid, reconstruction_path):
+def save_reconstruction(droid, traj, reconstruction_path):
 
     from pathlib import Path
 
@@ -92,6 +92,8 @@ def save_reconstruction(droid, reconstruction_path):
     np.save("reconstructions/{}/disps.npy".format(reconstruction_path), disps)
     np.save("reconstructions/{}/poses.npy".format(reconstruction_path), poses)
     np.save("reconstructions/{}/intrinsics.npy".format(reconstruction_path), intrinsics)
+    # traj_est is [translation, quaternion] for each frame
+    np.save("reconstructions/{}/traj_est.npy".format(reconstruction_path), traj)
 
 
 if __name__ == '__main__':
@@ -100,7 +102,7 @@ if __name__ == '__main__':
     parser.add_argument("--depthdir", type=str, default="auto", help="Set to 'auto' to use depth from image directory. Set to 'False' or 'None' to disable depth")
     parser.add_argument("--calib", type=str, help="path to calibration file")
     parser.add_argument("--t0", default=0, type=int, help="starting frame")
-    parser.add_argument("--stride", default=3, type=int, help="frame stride")
+    parser.add_argument("--stride", default=1, type=int, help="frame stride")
 
     parser.add_argument("--weights", default="droid.pth")
     parser.add_argument("--buffer", type=int, default=512)
@@ -110,7 +112,7 @@ if __name__ == '__main__':
     parser.add_argument("--beta", type=float, default=0.3, help="weight for translation / rotation components of flow")
     parser.add_argument("--filter_thresh", type=float, default=2.4, help="how much motion before considering new keyframe")
     parser.add_argument("--warmup", type=int, default=8, help="number of warmup frames")
-    parser.add_argument("--keyframe_thresh", type=float, default=2.0, help="threshold to create a new keyframe")
+    parser.add_argument("--keyframe_thresh", type=float, default=4.0, help="threshold to create a new keyframe")
     parser.add_argument("--frontend_thresh", type=float, default=16.0, help="add edges between frames whithin this distance")
     parser.add_argument("--frontend_window", type=int, default=25, help="frontend optimization window")
     parser.add_argument("--frontend_radius", type=int, default=2, help="force edges between frames within radius")
@@ -128,14 +130,17 @@ if __name__ == '__main__':
 
     droid = None
 
+    args.reconstruction_path = args.imagedir.replace("/rgb", "")
+
     # need high resolution depths
     if args.reconstruction_path is not None:
         args.upsample = True
-        
+
     if args.depthdir == "auto":
         args.depthdir = args.imagedir.replace("/rgb", "/depth")
     elif args.depthdir in ["False", "None"]:
         args.depthdir = None
+        
 
     tstamps = []
     for (t, image, intrinsics, depth) in tqdm(image_stream(args.imagedir, args.depthdir, args.calib, args.stride)):
@@ -151,7 +156,8 @@ if __name__ == '__main__':
         
         droid.track(t, image, intrinsics=intrinsics, depth=depth)
 
-    if args.reconstruction_path is not None:
-        save_reconstruction(droid, args.reconstruction_path)
-
     traj_est = droid.terminate(image_stream(args.imagedir, None, args.calib, args.stride, return_depth = False))
+    
+    if args.reconstruction_path is not None:
+        save_reconstruction(droid, traj_est, args.reconstruction_path)
+
