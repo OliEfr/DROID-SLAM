@@ -39,9 +39,13 @@ ENV NVIDIA_DRIVER_CAPABILITIES ${NVIDIA_DRIVER_CAPABILITIES:+$NVIDIA_DRIVER_CAPA
 RUN pip install torch==1.13.0+cu117 torchvision==0.14.0+cu117 torchaudio==0.13.0 --extra-index-url https://download.pytorch.org/whl/cu117
 
 
-COPY . .
+COPY requirements.txt .
 RUN pip install -r requirements.txt
 RUN pip install evo --upgrade --no-binary evo
 RUN pip install gdown
+
+COPY setup.py .
+COPY ./src ./src
+COPY ./thirdparty ./thirdparty
 RUN python setup.py install
 

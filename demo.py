@@ -22,24 +22,32 @@ def show_image(image):
     cv2.imshow('image', image / 255.0)
     cv2.waitKey(1)
 
-def image_stream(imagedir, calib, stride):
+def image_stream(imagedir, depthdir, calib, stride, return_depth = True):
     """ image generator """
 
     calib = np.loadtxt(calib, delimiter=" ")
     fx, fy, cx, cy = calib[:4]
-
     K = np.eye(3)
     K[0,0] = fx
     K[0,2] = cx
     K[1,1] = fy
     K[1,2] = cy
-
+    
     image_list = sorted(os.listdir(imagedir))[::stride]
-
+    if depthdir is not None:
+        depth_list = sorted(os.listdir(depthdir))[::stride]
+    
     for t, imfile in enumerate(image_list):
         image = cv2.imread(os.path.join(imagedir, imfile))
+        # depth = cv2.imread(os.path.join(depthdir, depth_list[t]), -1)
+        if depthdir is not None:
+            depth = np.fromfile(os.path.join(depthdir, depth_list[t]), dtype=np.uint16) / 5000.0 # required scaling factor
+            depth = depth.reshape(720 // 2, 1280 // 2) # aligned depth is half resolution of rgb
         if len(calib) > 4:
+            print("undistorting")
             image = cv2.undistort(image, K, calib[4:])
+            if depthdir is not None:
+                depth = cv2.undistort(depth, K, calib[4:])
 
         h0, w0, _ = image.shape
         h1 = int(h0 * np.sqrt((384 * 512) / (h0 * w0)))
@@ -48,19 +56,28 @@ def image_stream(imagedir, calib, stride):
         image = cv2.resize(image, (w1, h1))
         image = image[:h1-h1%8, :w1-w1%8]
         image = torch.as_tensor(image).permute(2, 0, 1)
-
+        
+        if depthdir is not None:
+            depth = cv2.resize(depth, (w1, h1))
+            depth = depth[:h1-h1%8, :w1-w1%8]
+            depth = np.array(depth, dtype=np.float32)
+            depth = torch.as_tensor(depth)
+        else:
+            depth = None
+        
         intrinsics = torch.as_tensor([fx, fy, cx, cy])
         intrinsics[0::2] *= (w1 / w0)
         intrinsics[1::2] *= (h1 / h0)
 
-        yield t, image[None], intrinsics
+        if return_depth:
+            yield t, image[None], intrinsics, depth 
+        else:
+            yield t, image[None], intrinsics
 
 
 def save_reconstruction(droid, reconstruction_path):
 
     from pathlib import Path
-    import random
-    import string
 
     t = droid.video.counter.value
     tstamps = droid.video.tstamp[:t].cpu().numpy()
@@ -80,6 +97,7 @@ def save_reconstruction(droid, reconstruction_path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--imagedir", type=str, help="path to image directory")
+    parser.add_argument("--depthdir", type=str, default="auto", help="Set to 'auto' to use depth from image directory. Set to 'False' or 'None' to disable depth")
     parser.add_argument("--calib", type=str, help="path to calibration file")
     parser.add_argument("--t0", default=0, type=int, help="starting frame")
     parser.add_argument("--stride", default=3, type=int, help="frame stride")
@@ -92,7 +110,7 @@ if __name__ == '__main__':
     parser.add_argument("--beta", type=float, default=0.3, help="weight for translation / rotation components of flow")
     parser.add_argument("--filter_thresh", type=float, default=2.4, help="how much motion before considering new keyframe")
     parser.add_argument("--warmup", type=int, default=8, help="number of warmup frames")
-    parser.add_argument("--keyframe_thresh", type=float, default=4.0, help="threshold to create a new keyframe")
+    parser.add_argument("--keyframe_thresh", type=float, default=2.0, help="threshold to create a new keyframe")
     parser.add_argument("--frontend_thresh", type=float, default=16.0, help="add edges between frames whithin this distance")
     parser.add_argument("--frontend_window", type=int, default=25, help="frontend optimization window")
     parser.add_argument("--frontend_radius", type=int, default=2, help="force edges between frames within radius")
@@ -113,9 +131,14 @@ if __name__ == '__main__':
     # need high resolution depths
     if args.reconstruction_path is not None:
         args.upsample = True
+        
+    if args.depthdir == "auto":
+        args.depthdir = args.imagedir.replace("/rgb", "/depth")
+    elif args.depthdir in ["False", "None"]:
+        args.depthdir = None
 
     tstamps = []
-    for (t, image, intrinsics) in tqdm(image_stream(args.imagedir, args.calib, args.stride)):
+    for (t, image, intrinsics, depth) in tqdm(image_stream(args.imagedir, args.depthdir, args.calib, args.stride)):
         if t < args.t0:
             continue
 
@@ -126,9 +149,9 @@ if __name__ == '__main__':
             args.image_size = [image.shape[2], image.shape[3]]
             droid = Droid(args)
         
-        droid.track(t, image, intrinsics=intrinsics)
+        droid.track(t, image, intrinsics=intrinsics, depth=depth)
 
     if args.reconstruction_path is not None:
         save_reconstruction(droid, args.reconstruction_path)
 
-    traj_est = droid.terminate(image_stream(args.imagedir, args.calib, args.stride))
+    traj_est = droid.terminate(image_stream(args.imagedir, None, args.calib, args.stride, return_depth = False))
