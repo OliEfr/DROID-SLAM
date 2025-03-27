@@ -1,3 +1,10 @@
+# Olis instruction
+0) Follow step 1) under the Demo section below to download the model
+1) Download your data from orbbec camera to `data/your_folder>/rgb` and `.../depth`. It must be the aligned depth and rgb, and the depth in the `.raw` format obtained from orbbec
+2) Run `python demo.py --imagedir=data/your_folder/rgb/ --calib=calib/orbbec.txt`
+3) Obtain frame-wise camera reconstruction in `reconstructions/data/maila/traj_est.npy`. The format is `[translation, quaternion]` for each frame. 
+
+
 # DROID-SLAM
 
 
