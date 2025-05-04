@@ -1,3 +1,4 @@
+from tkinter import SE
 import torch
 import cv2
 import lietorch
@@ -92,7 +93,7 @@ def droid_visualization(video, device="cuda:0"):
             poses = torch.index_select(video.poses, 0, dirty_index)
             disps = torch.index_select(video.disps, 0, dirty_index)
             Ps = SE3(poses).inv().matrix().cpu().numpy()
-
+            
             images = torch.index_select(video.images, 0, dirty_index)
             images = images.cpu()[:,[2,1,0],3::8,3::8].permute(0,2,3,1) / 255.0
             points = droid_backends.iproj(SE3(poses).inv().data, disps, video.intrinsics[0]).cpu()
@@ -105,6 +106,10 @@ def droid_visualization(video, device="cuda:0"):
             count = count.cpu()
             disps = disps.cpu()
             masks = ((count >= 2) & (disps > .5*disps.mean(dim=[1,2], keepdim=True)))
+
+
+            coordinate_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1)
+            vis.add_geometry(coordinate_frame)
             
             for i in range(len(dirty_index)):
                 pose = Ps[i]

@@ -42,13 +42,13 @@ def image_stream(imagedir, depthdir, maskdir, calib, stride, return_depth = True
     
     for t, imfile in enumerate(image_list):
         image = cv2.imread(os.path.join(imagedir, imfile))
+        
         if depthdir is not None:
             depth = np.fromfile(os.path.join(depthdir, depth_list[t]), dtype=np.uint16) / 5000.0 # required scaling factor
             depth = depth.reshape(720 // 2, 1280 // 2) # aligned depth is half resolution of rgb
-        if maskdir is not None:
-            mask = Image.open(os.path.join(maskdir, mask_list[t])) 
             
         if maskdir is not None:
+            mask = Image.open(os.path.join(maskdir, mask_list[t])) 
             mask = np.array(mask)
             mask = np.where(mask < 127, 1, 0)
             image = np.where(mask[..., None] > 0, image, 0)  # Apply mask
@@ -67,7 +67,7 @@ def image_stream(imagedir, depthdir, maskdir, calib, stride, return_depth = True
         h0, w0, _ = image.shape
         h1 = int(h0 * np.sqrt((384 * 512) / (h0 * w0)))
         w1 = int(w0 * np.sqrt((384 * 512) / (h0 * w0)))
-
+        
         image = cv2.resize(image, (w1, h1))
         image = image[:h1-h1%8, :w1-w1%8]
         image = torch.as_tensor(image).permute(2, 0, 1)
