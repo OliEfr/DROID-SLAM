@@ -1,7 +1,10 @@
 # Olis instruction
 0) allow xhost on your host: `xhost +local:docker`
 1) Follow step 1) under the Demo section below to download the model
-2) Download your data from orbbec camera to `data/your_folder>/rgb` and `.../depth` and `.../masks`. It must be the aligned depth and rgb, and the depth in the `.raw` format obtained from orbbec
+2) Download your data from orbbec camera to `data/your_folder>/rgb` and `.../depth` and `.../masks`. 
+  - It must be the aligned depth and rgb, and the depth in the `.raw` format obtained from orbbec.
+  - Masks and RGB must be of same size, ie both can be 1280x720
+  - Use DISTORDET frames, as undistortion is done by the demo.py script!
 3) Run `python demo.py --imagedir=data/maila/rgb/ --calib=calib/orbbec.txt`
 4) Obtain frame-wise camera reconstruction in `reconstructions/data/maila/traj_est.npy`. The format is `[translation, quaternion]` for each frame. 
 

@@ -371,5 +371,7 @@ class FactorGraph:
                         if (t0 <= i1 < t) and (t1 <= j1 < t):
                             d[(i1-t0)*(t-t1) + (j1-t1)] = np.inf
 
+
+        # Error in the following line? Try https://github.com/princeton-vl/DROID-SLAM/issues/115#issuecomment-2326766935
         ii, jj = torch.as_tensor(es, device=self.device).unbind(dim=-1)
         self.add_factors(ii, jj, remove)
