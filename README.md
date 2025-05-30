@@ -3,8 +3,8 @@
 1) Follow step 1) under the Demo section below to download the model
 2) Download your data from orbbec camera to `data/your_folder>/rgb` and `.../depth` and `.../masks`. 
   - It must be the aligned depth and rgb, and the depth in the `.raw` format obtained from orbbec.
-  - Masks and RGB must be of same size, ie both can be 1280x720
   - Use DISTORDET frames, as undistortion is done by the demo.py script!
+  - Masks and RGB must be of same size, ie both can be 1280x720 (size doesnt matter - gets rescaled anyways)
 3) Run `python demo.py --imagedir=data/maila/rgb/ --calib=calib/orbbec.txt`
 4) Obtain frame-wise camera reconstruction in `reconstructions/data/maila/traj_est.npy`. The format is `[translation, quaternion]` for each frame. 
 
@@ -46,6 +46,7 @@ To run the code you will need ...
 ```Bash
 git clone --recursive https://github.com/princeton-vl/DROID-SLAM.git
 ```
+NOTE: do not need thirdparty/eigen submodule anymore!
 
 2. Creating a new anaconda environment using the provided .yaml file. Use `environment_novis.yaml` to if you do not want to use the visualization
 ```Bash

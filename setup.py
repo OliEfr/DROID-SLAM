@@ -8,7 +8,7 @@ setup(
     name='droid_backends',
     ext_modules=[
         CUDAExtension('droid_backends',
-            include_dirs=[osp.join(ROOT, 'thirdparty/eigen')],
+            include_dirs=[osp.join(ROOT, 'thirdparty/lietorch/eigen')],
             sources=[
                 'src/droid.cpp', 
                 'src/droid_kernels.cu',
@@ -40,7 +40,7 @@ setup(
         CUDAExtension('lietorch_backends', 
             include_dirs=[
                 osp.join(ROOT, 'thirdparty/lietorch/lietorch/include'), 
-                osp.join(ROOT, 'thirdparty/eigen')],
+                osp.join(ROOT, 'thirdparty/lietorch/eigen')],
             sources=[
                 'thirdparty/lietorch/lietorch/src/lietorch.cpp', 
                 'thirdparty/lietorch/lietorch/src/lietorch_gpu.cu',
